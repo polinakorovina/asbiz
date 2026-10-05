@@ -39,7 +39,6 @@ DETAILED = (
 - другое: всё остальное; при сомнении выбирай «другое»."""
 )
 
-# Рассуждение. max_tokens кандидата должен быть больше budget_tokens
 # Правила и два разобранных обращения (придуманы, не из tickets.jsonl)
 FEWSHOT = (
     DETAILED
@@ -51,6 +50,8 @@ FEWSHOT = (
 Обращение: «Почему с меня списали 499 рублей, хотя я не подключала никакие услуги?»
 Ответ: тарифы"""
 )
+
+# Рассуждение. max_tokens кандидата должен быть больше budget_tokens
 THINKING = {"thinking": {"type": "enabled", "budget_tokens": 1024}}
 
 # Обращений в день для прогноза на месяц
@@ -129,9 +130,12 @@ async def run_candidate(
                 )
             except LLMError:
                 return Row(row["id"], ok=False, failed=True)
+        answer, gold = parse_category(res.text), row["gold"]["category"]
+        if answer != gold:  # разбор ошибок: на каком обращении и что перепутано
+            print("%s | %s | эталон %s, ответ %s" % (cand.name, row["id"], gold, answer))
         return Row(
             row["id"],
-            parse_category(res.text) == row["gold"]["category"],
+            answer == gold,
             truncated=res.truncated,
             latency_s=res.total_s,
             ttft_s=res.ttft_s,
