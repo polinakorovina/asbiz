@@ -49,19 +49,30 @@ class Ticket(BaseModel):
         cls, ids: List[str], info: ValidationInfo
     ) -> List[str]:
         """Номера подходят под шаблон, есть в тексте, и из текста взяты все"""
-        # TODO С2: номера подходят под PAYMENT_ID, есть в тексте, и из текста взяты все
-        raise NotImplementedError(
-            "семинар 2: номера подходят под PAYMENT_ID, есть в тексте, и из текста взяты все"
-        )
+        source = (info.context or {}).get("source")
+        for pid in ids:
+            if not PAYMENT_ID.match(pid):
+                raise ValueError("идентификатор %r не похож на P-12345" % pid)
+            if source is not None and pid not in source:
+                raise ValueError(
+                    "идентификатора %s нет в обращении, не выдумывай" % pid
+                )
+        if source is not None:
+            for pid in re.findall(r"\bP-\d{5}\b", source):
+                if pid not in ids:
+                    raise ValueError("в обращении есть номер %s, добавь его" % pid)
+        return ids
 
     @field_validator("quote")
     @classmethod
     def quote_is_verbatim(cls, quote: str, info: ValidationInfo) -> str:
         """Цитата дословно есть в обращении"""
-        # TODO С2: цитата обязана быть подстрокой обращения (без учёта регистра и пробелов)
-        raise NotImplementedError(
-            "семинар 2: цитата обязана быть подстрокой обращения (без учёта регистра и пробелов)"
-        )
+        source = (info.context or {}).get("source")
+        if source is not None and _norm(quote) not in _norm(source):
+            raise ValueError(
+                "цитаты нет в обращении дословно; скопируй фрагмент без изменений"
+            )
+        return quote
 
 
 def describe(schema: Type[BaseModel]) -> str:
